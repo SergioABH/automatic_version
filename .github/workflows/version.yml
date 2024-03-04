@@ -1,0 +1,72 @@
+name: Automatic_Version
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - closed
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '14'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Get Version
+        id: get_version
+        run: |
+          base_branch=$(jq -r .pull_request.base.ref $GITHUB_EVENT_PATH)
+          branch_name=$(jq -r .pull_request.head.ref $GITHUB_EVENT_PATH)
+          merged=${{ github.event.pull_request.merged }}
+
+          if [[ $base_branch == 'dev' ]]; then
+            if [[ $merged == 'true' && $branch_name =~ ^feat/ ]]; then
+              version=$(echo $(npm version --no-git-tag-version prerelease) | sed -r 's/-alpha.*//')
+              new_version=$(echo "$version-alpha.$(echo $GITHUB_SHA | cut -c1-7)")
+              echo "::set-output name=new_version::$new_version"
+            fi
+          elif [[ $base_branch == 'qa' ]]; then
+            if [[ $merged == 'true' && $branch_name == 'dev' ]]; then
+              version=$(echo $(npm version --no-git-tag-version prerelease) | sed -r 's/-beta.*//')
+              new_version=$(echo "$version-beta.$(echo $GITHUB_SHA | cut -c1-7)")
+              echo "::set-output name=new_version::$new_version"
+            fi
+          elif [[ $base_branch == 'main' ]]; then
+            if [[ $merged == 'true' && $branch_name == 'qa' ]]; then
+              version=$(npm version --no-git-tag-version)
+              echo "::set-output name=new_version::$version"
+            fi
+          fi
+
+      - name: Update Version
+        if: ${{ steps.get_version.outputs.new_version }}
+        run: |
+          new_version=${{ steps.get_version.outputs.new_version }}
+          echo "New version: $new_version"
+
+          npm --no-git-tag-version version "$new_version"
+          git add package.json
+          git commit -m "Update version to $new_version"
+
+      - name: Push Changes
+        if: ${{ steps.get_version.outputs.new_version }}
+        run: |
+          git push origin ${{ github.ref }}
