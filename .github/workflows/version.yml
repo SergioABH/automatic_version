@@ -49,7 +49,7 @@ jobs:
               new_version=$(echo "$version-beta.$(echo $GITHUB_SHA | cut -c1-7)")
               echo "::set-output name=new_version::$new_version"
             fi
-          elif [[ $base_branch == 'main' ]]; then
+          elif [[ $base_branch == 'master' ]]; then
             if [[ $merged == 'true' && $branch_name == 'qa' ]]; then
               version=$(npm version --no-git-tag-version)
               echo "::set-output name=new_version::$version"
