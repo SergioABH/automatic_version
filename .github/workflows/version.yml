@@ -37,7 +37,8 @@ jobs:
           if [[ $branch_name == 'dev' ]]; then
             if [[ $branch_name == *feat/* ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version prerelease --preid=alpha
+                npm version prerelease --preid=alpha
+                git push origin dev --follow-tags
               fi
             elif [[ $branch_name == *reintegrate/* ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
@@ -48,7 +49,7 @@ jobs:
           elif [[ $branch_name == 'qa' ]]; then
             if [[ $branch_name == 'dev' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version prerelease --preid=beta
+                npm version prerelease --preid=beta
               fi
             elif [[ $branch_name == *fix/* ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
