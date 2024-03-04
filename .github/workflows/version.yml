@@ -43,27 +43,26 @@ jobs:
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 new_version=$(npm --no-git-tag-version version minor)
                 new_version="${new_version}-alpha.0"
+                npm version $new_version
               fi
             fi
-          
           elif [[ $base_branch == 'qa' ]]; then
             if [[ $branch_name == 'dev' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version prerelease --preid=beta
               fi
             elif [[ $branch_name == *fix/* ]]; then
-              elif [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
+              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version patch
               fi
             fi
-          
           elif [[ $base_branch == 'main' ]]; then
             if [[ $branch_name == 'qa' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version minor
               fi
             elif [[ $branch_name == *fix/* ]]; then
-              elif [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
+              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version patch
               fi
             fi
@@ -90,13 +89,12 @@ jobs:
           git add .
           git commit -am "Update version" || true
           git checkout $base_branch
-          git push origin $base_branch --follow-tags || true        
+          git push origin $base_branch --follow-tags || true
         shell: bash
 
       - name: Reintegrate Changes
         run: |
           if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'fix'* ]]; then
-
             version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 main))
             reintegrate_branch="reintegrate/$version"
 
