@@ -71,6 +71,5 @@ jobs:
 
           git add .
           git commit -m "Update version to $new_version" || true
-          git tag -a $new_version -m "Version $new_version"
           git push origin $base_branch --follow-tags || true
 
