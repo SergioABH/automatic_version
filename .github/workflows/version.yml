@@ -8,12 +8,10 @@ on:
 jobs:
   version:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v2
 
       - name: Set Node.js
         uses: actions/setup-node@v4
@@ -31,45 +29,33 @@ jobs:
       - name: Determine Version
         id: determine_version
         run: |
-          base_branch=$(jq -r .pull_request.base.ref $GITHUB_EVENT_PATH)
           branch_name=$(jq -r .pull_request.head.ref $GITHUB_EVENT_PATH)
+          version_type=""
 
           if [[ $branch_name == 'dev' ]]; then
             if [[ $branch_name == *feat/* ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version prerelease --preid=alpha
-              fi
+              version_type="prerelease --preid=alpha"
             elif [[ $branch_name == *reintegrate/* ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version minor
-                new_version=$(npm --no-git-tag-version version prerelease --preid=alpha)
-              fi
+              version_type="minor"
             fi
           elif [[ $branch_name == 'qa' ]]; then
             if [[ $branch_name == 'dev' ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version prerelease --preid=beta
-              fi
+              version_type="prerelease --preid=beta"
             elif [[ $branch_name == *fix/* ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version patch
-              fi
+              version_type="patch"
             fi
           elif [[ $branch_name == 'main' ]]; then
             if [[ $branch_name == 'qa' ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version minor
-              fi
+              version_type="minor"
             elif [[ $branch_name == *fix/* ]]; then
-              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
-                npm --no-git-tag-version version patch
-              fi
+              version_type="patch"
             fi
           fi
 
-          echo "::set-output name=base_branch::$base_branch"
-          echo "::set-output name=branch_name::$branch_name"
-          echo "::set-output name=new_version::$new_version"
+          if [[ -n $version_type ]]; then
+            new_version=$(npm --no-git-tag-version version $version_type)
+            echo "::set-output name=new_version::$new_version"
+          fi
 
       - name: Get New Version
         id: get_version
@@ -77,37 +63,14 @@ jobs:
 
       - name: Commit and Push Version Update
         run: |
-          base_branch=${{ steps.determine_version.outputs.base_branch }}
-          branch_name=${{ steps.determine_version.outputs.branch_name }}
+          base_branch=$(jq -r .pull_request.base.ref $GITHUB_EVENT_PATH)
           new_version=${{ steps.determine_version.outputs.new_version }}
-
-          echo "Base branch: $base_branch"
-          echo "Branch name: $branch_name"
-          echo "New version: $new_version"
 
           git fetch origin $base_branch:$base_branch || true
           git checkout $base_branch || true
 
           git add .
-          git commit -am "Update version to $new_version" || true
-          git checkout $base_branch
+          git commit -m "Update version to $new_version" || true
+          git tag -a $new_version -m "Version $new_version"
           git push origin $base_branch --follow-tags || true
 
-      - name: Reintegrate Changes
-        run: |
-          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'hotfix'* ]]; then
-
-            version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 main))
-            reintegrate_branch="reintegrate/$version"
-
-            git fetch origin main
-            git checkout -b $reintegrate_branch main
-            git push origin $reintegrate_branch
-
-            PR_TITLE="Reintegrate $version to dev"
-
-            curl -X POST \
-              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
-              -d '{"title":"'"$PR_TITLE"'","head":"'"$reintegrate_branch"'","base":"dev"}' \
-              "https://api.github.com/repos/${{ github.repository }}/pulls"
-          fi
