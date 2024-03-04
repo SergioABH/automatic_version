@@ -3,8 +3,6 @@ name: Automatic_Version
 on:
   pull_request:
     types:
-      - opened
-      - synchronize
       - closed
 
 jobs:
