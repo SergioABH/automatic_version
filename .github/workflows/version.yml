@@ -34,7 +34,7 @@ jobs:
           base_branch=$(jq -r .pull_request.base.ref $GITHUB_EVENT_PATH)
           branch_name=$(jq -r .pull_request.head.ref $GITHUB_EVENT_PATH)
 
-          if [[ $base_branch == 'dev' ]]; then
+          if [[ $branch_name == 'dev' ]]; then
             if [[ $branch_name == *feat/* ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version prerelease --preid=alpha
@@ -43,10 +43,9 @@ jobs:
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 new_version=$(npm --no-git-tag-version version minor)
                 new_version="${new_version}-alpha.0"
-                npm version $new_version
               fi
             fi
-          elif [[ $base_branch == 'qa' ]]; then
+          elif [[ $branch_name == 'qa' ]]; then
             if [[ $branch_name == 'dev' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version prerelease --preid=beta
@@ -56,7 +55,7 @@ jobs:
                 npm version patch
               fi
             fi
-          elif [[ $base_branch == 'main' ]]; then
+          elif [[ $branch_name == 'main' ]]; then
             if [[ $branch_name == 'qa' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version minor
@@ -90,22 +89,3 @@ jobs:
           git commit -am "Update version" || true
           git checkout $base_branch
           git push origin $base_branch --follow-tags || true
-        shell: bash
-
-      - name: Reintegrate Changes
-        run: |
-          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'fix'* ]]; then
-            version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 main))
-            reintegrate_branch="reintegrate/$version"
-
-            git fetch origin main
-            git checkout -b $reintegrate_branch main
-            git push origin $reintegrate_branch
-
-            PR_TITLE="Reintegrate $version to dev"
-
-            curl -X POST \
-              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
-              -d '{"title":"'"$PR_TITLE"'","head":"'"$reintegrate_branch"'","base":"dev"}' \
-              "https://api.github.com/repos/${{ github.repository }}/pulls"
-          fi
