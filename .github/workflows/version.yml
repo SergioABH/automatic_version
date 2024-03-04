@@ -45,14 +45,14 @@ jobs:
                 new_version="${new_version}-alpha.0"
               fi
             fi
-          
+
           elif [[ $base_branch == 'qa' ]]; then
             if [[ $branch_name == 'dev' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version prerelease --preid=beta
               fi
             elif [[ $branch_name == *fix/* ]]; then
-              elif [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
+              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version patch
               fi
             fi
@@ -63,7 +63,7 @@ jobs:
                 npm version minor
               fi
             elif [[ $branch_name == *fix/* ]]; then
-              elif [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
+              if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version patch
               fi
             fi
@@ -80,9 +80,11 @@ jobs:
         run: |
           base_branch=${{ steps.determine_version.outputs.base_branch }}
           branch_name=${{ steps.determine_version.outputs.branch_name }}
+          version=${{ steps.get_version.outputs.version }}
 
           echo "Base branch: $base_branch"
           echo "Branch name: $branch_name"
+          echo "Version: $version"
 
           git fetch origin $base_branch:$base_branch || true
           git checkout $base_branch || true
@@ -95,7 +97,7 @@ jobs:
 
       - name: Reintegrate Changes
         run: |
-          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'fix'* ]]; then
+          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'hotfix'* ]]; then
 
             version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 main))
             reintegrate_branch="reintegrate/$version"
