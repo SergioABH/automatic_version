@@ -1,4 +1,4 @@
-name: Automatic_Version2S
+name: Automatic_Version
 
 on:
   pull_request:
