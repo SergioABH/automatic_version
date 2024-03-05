@@ -57,7 +57,7 @@ jobs:
               fi
             fi
           
-          elif [[ $base_branch == 'main' ]]; then
+          elif [[ $base_branch == 'master' ]]; then
             if [[ $branch_name == 'qa' ]]; then
               if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' ]]; then
                 npm version minor
@@ -97,13 +97,13 @@ jobs:
 
       - name: Reintegrate Changes
         run: |
-          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'main' && ${{ github.event.pull_request.head.ref }} == *'hotfix'* ]]; then
+          if [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == 'true' && ${{ github.event.pull_request.base.ref }} == 'master' && ${{ github.event.pull_request.head.ref }} == *'hotfix'* ]]; then
 
-            version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 main))
+            version=$(git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1 master))
             reintegrate_branch="reintegrate/$version"
 
-            git fetch origin main
-            git checkout -b $reintegrate_branch main
+            git fetch origin master
+            git checkout -b $reintegrate_branch master
             git push origin $reintegrate_branch
 
             PR_TITLE="Reintegrate $version to dev"
